@@ -9,6 +9,13 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 requirements = ["conda-lock>=1", "ruamel.yaml", "pydantic"]
+docs_requirements = [
+    "Sphinx>=5.1.1",
+    "sphinx-autobuild>=2021.3.14",
+    "sphinx-autodoc-typehints>=^1.19.2",
+    "myst-parser>=0.18.0",
+    "pydata-sphinx-theme>=0.9.0",
+]
 
 setup(
     name="conda-project",
@@ -23,6 +30,9 @@ setup(
     entry_points={"console_scripts": ["conda-project=conda_project.cli.main:main"]},
     python_requires=">=3.7",
     install_requires=requirements,
+    extras_require={
+        "docs": docs_requirements,
+    },
     keywords="conda-project",
     classifiers=[
         "Programming Language :: Python :: 3.7",
