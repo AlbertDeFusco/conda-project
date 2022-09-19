@@ -1,5 +1,6 @@
 # Copyright (C) 2022 Anaconda, Inc
 # SPDX-License-Identifier: BSD-3-Clause
+from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -59,7 +60,7 @@ class EnvironmentYaml(BaseYaml):
     name: Optional[str] = None
     channels: Optional[List[str]] = None
     dependencies: List[Union[str, Dict[str, List[str]]]] = []
-    variables: Optional[Dict[str, str]] = None
+    variables: Optional[Dict[str, str]] = {}
     prefix: Optional[Path] = None
     platforms: Optional[List[str]] = None
 
