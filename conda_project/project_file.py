@@ -20,16 +20,11 @@ yaml.block_seq_indent = 2
 yaml.indent = 2
 
 
-def _cleandict(d: Dict) -> Dict:
-    return {k: v for k, v in d.items() if v is not None}
-
-
 class BaseYaml(BaseModel):
     def yaml(self, stream: Union[TextIO, Path]):
         # Passing through self.json() allows json_encoders
-        # to serialize objects and the _cleandict hook avoids
-        # writing empty keys to the yaml file.
-        encoded = json.loads(self.json(), object_hook=_cleandict)
+        # to serialize objects.
+        encoded = json.loads(self.json())
         return yaml.dump(encoded, stream)
 
     @classmethod
@@ -51,9 +46,16 @@ class BaseYaml(BaseModel):
         extra = "forbid"
 
 
+class Command(BaseYaml):
+    cmd: str
+    environment: Optional[str] = None
+
+
 class CondaProjectYaml(BaseYaml):
     name: str
     environments: OrderedDict[str, List[Path]]
+    variables: Dict[str, Optional[str]] = {}
+    commands: OrderedDict[str, Union[Command, str]] = OrderedDict()
 
 
 class EnvironmentYaml(BaseYaml):

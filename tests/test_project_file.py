@@ -4,7 +4,7 @@
 from io import StringIO
 from pathlib import Path
 from textwrap import dedent
-from typing import Dict, List, Optional, Union
+from typing import List
 
 import pytest
 
@@ -19,7 +19,7 @@ def test_empty_environment():
     assert env.name is None
     assert env.dependencies == []
     assert env.channels is None
-    assert env.variables is None
+    assert env.variables == {}
     assert env.prefix is None
 
 
@@ -39,18 +39,6 @@ def test_to_yaml_with_indent():
     stream = StringIO()
     yml.yaml(stream)
     assert stream.getvalue() == "foo: bar\nstuff:\n  - thing1\n  - thing2\n"
-
-
-def test_yaml_dump_skip_empty_keys():
-    class Yaml(BaseYaml):
-        filled: str
-        empty: Optional[str] = None
-        nested: Dict[str, Union[None, List[str]]] = {}
-
-    yml = Yaml(filled="foo", nested={"a": ["b"], "c": None, "d": []})
-    stream = StringIO()
-    yml.yaml(stream)
-    assert stream.getvalue() == "filled: foo\nnested:\n  a:\n    - b\n  d: []\n"
 
 
 def test_bad_yaml_file():
@@ -132,6 +120,160 @@ def test_project_yaml_round_trip():
             - ../dev.yaml
           another:
             - another-env.yml
+        variables: {}
+        commands: {}
+        """
+    )
+
+    assert written_contents == expected_contents
+
+
+def test_variables():
+    project_file_input = dedent(
+        """\
+        name: my-project
+        environments:
+          default:
+            - ./environment.yml
+        variables:
+          WITH_DEFAULT: value
+          NO_DEFAULT:
+
+        """
+    )
+
+    project_file = CondaProjectYaml.parse_yaml(project_file_input)
+
+    project_dict = project_file.dict()
+    assert project_dict["variables"] == {"WITH_DEFAULT": "value", "NO_DEFAULT": None}
+
+
+def test_bad_variables():
+    project_file_input = dedent(
+        """\
+        name: my-project
+        environments:
+          default:
+            - ./environment.yml
+        variables:
+          NOT_SECRET_WITH_DEFAULT: ['foo']
+        """
+    )
+
+    with pytest.raises(CondaProjectError):
+        _ = CondaProjectYaml.parse_yaml(project_file_input)
+
+
+def test_project_yaml_round_trip_with_empty_variable():
+    project_file_input = dedent(
+        """\
+        name: my-project
+        # comment
+        environments:
+          default:
+            - ./environment.yml
+            - ../dev.yaml
+          another:
+            - another-env.yml
+
+        variables:
+          empty:
+        """
+    )
+
+    project_file = CondaProjectYaml.parse_yaml(project_file_input)
+
+    stream = StringIO()
+    project_file.yaml(stream)
+
+    written_contents = stream.getvalue()
+
+    expected_contents = dedent(
+        """\
+        name: my-project
+        environments:
+          default:
+            - environment.yml
+            - ../dev.yaml
+          another:
+            - another-env.yml
+        variables:
+          empty:
+        commands: {}
+        """
+    )
+
+    assert written_contents == expected_contents
+
+
+def test_commands():
+    project_file_input = dedent(
+        """\
+        name: my-project
+        environments:
+          default:
+            - ./environment.yml
+        commands:
+          fully_specified_command:
+            cmd: foo
+            environment: default
+
+          command_without_environment:
+            cmd: bar
+
+          implicit_command: baz
+        """
+    )
+
+    project_file = CondaProjectYaml.parse_yaml(project_file_input)
+    project_dict = project_file.dict()
+    assert project_dict["commands"] == {
+        "fully_specified_command": {"cmd": "foo", "environment": "default"},
+        "command_without_environment": {"cmd": "bar", "environment": None},
+        "implicit_command": "baz",
+    }
+
+
+def test_commands_roundtrip():
+    project_file_input = dedent(
+        """\
+        name: my-project
+        environments:
+          default:
+            - ./environment.yml
+        commands:
+          fully_specified_command:
+            cmd: foo
+            environment: default
+
+          command_without_environment:
+            cmd: bar
+
+          implicit_command: baz
+        """
+    )
+
+    project_file = CondaProjectYaml.parse_yaml(project_file_input)
+    stream = StringIO()
+    project_file.yaml(stream)
+
+    written_contents = stream.getvalue()
+
+    expected_contents = dedent(
+        """\
+        name: my-project
+        environments:
+          default:
+            - environment.yml
+        variables: {}
+        commands:
+          fully_specified_command:
+            cmd: foo
+            environment: default
+          command_without_environment:
+            cmd: bar
+            environment:
+          implicit_command: baz
         """
     )
 
