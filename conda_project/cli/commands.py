@@ -102,3 +102,17 @@ def clean(args: Namespace) -> bool:
         env.clean(verbose=True)
 
     return True
+
+
+@handle_errors
+def run(args: Namespace) -> bool:
+    project = CondaProject(args.directory)
+
+    if args.command:
+        to_run = project.commands[args.command]
+    else:
+        to_run = project.default_command
+
+    to_run.run(verbose=True)
+
+    return True
