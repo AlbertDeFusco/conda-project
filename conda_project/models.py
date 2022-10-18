@@ -14,7 +14,7 @@ from contextlib import nullcontext, redirect_stderr
 from io import StringIO
 from pathlib import Path
 from subprocess import SubprocessError
-from typing import Tuple
+from typing import Dict, Optional, Tuple
 
 from conda_lock.conda_lock import (
     default_virtual_package_repodata,
@@ -42,6 +42,11 @@ class BaseModel(PydanticBaseModel):
     class Config:
         allow_mutation = False
         extra = "forbid"
+
+
+class Variable(BaseModel):
+    key: str
+    default_value: str
 
 
 class Environment(BaseModel):
@@ -315,3 +320,34 @@ class Environment(BaseModel):
             verbose=verbose,
             logger=logger,
         )
+
+
+class Command(BaseModel):
+    name: str
+    cmd: str
+    environment: Environment
+    variables: Dict[str, Optional[str]]
+
+    def run(self, verbose=False):
+        if not self.environment.is_prepared:
+            self.environment.prepare(verbose=verbose)
+
+        missing_vars = []
+        for k, v in self.variables.items():
+            if v is None and k not in os.environ:
+                missing_vars.append(k)
+        if missing_vars:
+            errs = "\n".join(missing_vars)
+            msg = "The following variables do not have a default value and were not"
+            f" set when executing 'conda project run':\n{errs}"
+            raise CondaProjectError(msg)
+
+        args = self.cmd.split()
+        _ = call_conda(
+            ["run", "--no-capture-output", "-p", str(self.environment.prefix), *args],
+            verbose=verbose,
+            variables=self.variables,
+        )
+
+
+Command.update_forward_refs()

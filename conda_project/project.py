@@ -14,7 +14,7 @@ from pydantic import create_model
 
 from .conda import current_platform
 from .exceptions import CondaProjectError
-from .models import BaseModel, Environment
+from .models import BaseModel, Command, Environment
 from .project_file import (
     ENVIRONMENT_YAML_FILENAMES,
     PROJECT_YAML_FILENAMES,
@@ -32,6 +32,17 @@ logging.basicConfig(level=os.environ.get("CONDA_PROJECT_LOGLEVEL", "WARNING"))
 
 class BaseEnvironments(BaseModel):
     def __getitem__(self, key: str) -> Environment:
+        return getattr(self, key)
+
+    def keys(self):
+        return self.__dict__.keys()
+
+    def values(self):
+        return self.__dict__.values()
+
+
+class BaseCommands(BaseModel):
+    def __getitem__(self, key: str) -> Command:
         return getattr(self, key)
 
     def keys(self):
@@ -150,7 +161,7 @@ class CondaProject:
         )
 
         environment_yaml_path = directory / "environment.yml"
-        environment_yaml.yaml(directory / "environment.yml")
+        environment_yaml.yaml(directory / "environment.yml", drop_empty_keys=True)
 
         project_yaml = CondaProjectYaml(
             name=name,
@@ -199,6 +210,37 @@ class CondaProject:
     def default_environment(self) -> Environment:
         name = next(iter(self._project_file.environments))
         return self.environments[name]
+
+    @property
+    def commands(self) -> BaseCommands:
+        cmds = OrderedDict()
+        for name, cmd in self._project_file.commands.items():
+            if isinstance(cmd, str):
+                cmd_args = cmd
+                environment = self.default_environment
+            else:
+                cmd_args = cmd.cmd
+                environment = (
+                    self.environments[cmd.environment]
+                    if cmd.environment is not None
+                    else self.default_environment
+                )
+
+            cmds[name] = Command(
+                name=name,
+                cmd=cmd_args,
+                environment=environment,
+                variables=self._project_file.variables,
+            )
+        Commands = create_model(
+            "Commands", **{k: (Command, ...) for k in cmds}, __base__=BaseCommands
+        )
+        return Commands(**cmds)
+
+    @property
+    def default_command(self) -> Command:
+        name = next(iter(self._project_file.commands))
+        return self.commands[name]
 
     def check(self, verbose=False) -> bool:
         """Check the project for inconsistencies or errors.
