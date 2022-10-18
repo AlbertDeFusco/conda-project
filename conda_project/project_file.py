@@ -20,11 +20,16 @@ yaml.block_seq_indent = 2
 yaml.indent = 2
 
 
+def _cleandict(d: Dict) -> Dict:
+    return {k: v for k, v in d.items() if v is not None}
+
+
 class BaseYaml(BaseModel):
-    def yaml(self, stream: Union[TextIO, Path]):
+    def yaml(self, stream: Union[TextIO, Path], drop_empty_keys=False):
         # Passing through self.json() allows json_encoders
         # to serialize objects.
-        encoded = json.loads(self.json())
+        object_hook = _cleandict if drop_empty_keys else None
+        encoded = json.loads(self.json(), object_hook=object_hook)
         return yaml.dump(encoded, stream)
 
     @classmethod
