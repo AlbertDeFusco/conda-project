@@ -20,8 +20,15 @@ def call_conda(
     condarc_path: Optional[Path] = None,
     verbose: bool = False,
     logger: Optional[Logger] = None,
+    variables: Optional[dict[str, str]] = None,
 ) -> subprocess.CompletedProcess:
-    env = os.environ.copy()
+    """Call conda CLI with subprocess.run"""
+
+    parent_process_env = os.environ.copy()
+
+    variables = {} if variables is None else variables
+    env = {**variables, **parent_process_env}
+
     if condarc_path is not None:
         if logger is not None:
             logger.info(f"setting CONDARC env variable to {condarc_path}")
@@ -36,6 +43,7 @@ def call_conda(
 
     if logger is not None:
         logger.info(f'running conda command: {" ".join(cmd)}')
+
     proc = subprocess.run(
         cmd, env=env, stdout=stdout, stderr=subprocess.PIPE, encoding="utf-8"
     )
