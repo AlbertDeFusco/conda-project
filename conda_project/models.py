@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shlex
 import shutil
 import sys
 import tempfile
@@ -344,7 +345,7 @@ class Command(BaseModel):
             )
             raise CondaProjectError(msg)
 
-        args = self.cmd.split()
+        args = shlex.split(self.cmd)
         _ = call_conda(
             ["run", "--no-capture-output", "-p", str(self.environment.prefix), *args],
             verbose=verbose,
