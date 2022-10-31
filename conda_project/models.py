@@ -338,8 +338,10 @@ class Command(BaseModel):
                 missing_vars.append(k)
         if missing_vars:
             errs = "\n".join(missing_vars)
-            msg = "The following variables do not have a default value and were not"
-            f" set when executing 'conda project run':\n{errs}"
+            msg = (
+                "The following variables do not have a default value and were not"
+                f" set when executing 'conda project run':\n{errs}"
+            )
             raise CondaProjectError(msg)
 
         args = self.cmd.split()
