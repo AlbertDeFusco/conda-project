@@ -69,6 +69,7 @@ jobs:
           fi
           chmod +x conda.exe
           ./conda.exe config --set auto_update_conda false
+          ./conda.exe clean -ay
           ./conda.exe info
       - name: Setup miniconda
         shell: bash
