@@ -231,6 +231,7 @@ class CondaProject:
                 cmd=cmd_args,
                 environment=environment,
                 variables=self._project_file.variables,
+                directory=self.directory,
             )
         Commands = create_model(
             "Commands", **{k: (Command, ...) for k in cmds}, __base__=BaseCommands

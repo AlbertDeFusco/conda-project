@@ -6,7 +6,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import shlex
 import shutil
 import sys
 import tempfile
@@ -26,7 +25,7 @@ from conda_lock.conda_lock import (
 )
 from pydantic import BaseModel as PydanticBaseModel
 
-from .conda import CONDA_EXE, call_conda, current_platform
+from .conda import CONDA_EXE, call_conda, conda_activate, conda_run, current_platform
 from .exceptions import CondaProjectError
 from .project_file import EnvironmentYaml
 from .utils import Spinner, env_variable
@@ -322,12 +321,19 @@ class Environment(BaseModel):
             logger=logger,
         )
 
+    def activate(self, directory=None, variables=None, verbose=False) -> None:
+        if not self.is_prepared:
+            self.prepare(verbose=verbose)
+
+        conda_activate(str(self.prefix), str(directory), variables)
+
 
 class Command(BaseModel):
     name: str
     cmd: str
     environment: Environment
     variables: Dict[str, Optional[str]]
+    directory: Path
 
     def run(self, verbose=False):
         if not self.environment.is_prepared:
@@ -345,11 +351,8 @@ class Command(BaseModel):
             )
             raise CondaProjectError(msg)
 
-        args = shlex.split(self.cmd)
-        _ = call_conda(
-            ["run", "--no-capture-output", "-p", str(self.environment.prefix), *args],
-            verbose=verbose,
-            variables=self.variables,
+        conda_run(
+            self.cmd, str(self.environment.prefix), str(self.directory), self.variables
         )
 
 

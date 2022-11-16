@@ -10,7 +10,7 @@ from conda_project.cli.main import cli, main, parse_and_run
 
 PROJECT_COMMANDS = ("create", "check")
 ENVIRONMENT_COMMANDS = ("clean", "prepare", "lock")
-EXTRA_COMMANDS = ("run",)
+EXTRA_COMMANDS = ("run", "activate")
 ALL_COMMANDS = PROJECT_COMMANDS + ENVIRONMENT_COMMANDS + EXTRA_COMMANDS
 
 
