@@ -8,7 +8,7 @@ import versioneer
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-requirements = ["conda-lock>=1", "ruamel.yaml", "pydantic"]
+requirements = ["conda-lock>=1", "ruamel.yaml", "pydantic", "pexpect", "shellingham"]
 
 setup(
     name="conda-project",
