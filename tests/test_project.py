@@ -220,6 +220,20 @@ def test_is_prepared(project_directory_factory):
     _ = project.default_environment.prepare()
     assert project.default_environment.is_prepared
 
+
+@pytest.mark.slow
+def test_is_not_prepared(project_directory_factory):
+    env_yaml = dedent(
+        """\
+        name: test
+        dependencies: [python=3.8]
+        """
+    )
+    project_path = project_directory_factory(env_yaml=env_yaml)
+    project = CondaProject(project_path)
+
+    _ = project.default_environment.prepare()
+    assert project.default_environment.is_prepared
     updated_yaml = dedent(
         """\
         name: test
@@ -239,8 +253,8 @@ def test_is_prepared(project_directory_factory):
     assert project.default_environment.is_locked
     assert not project.default_environment.is_prepared
 
-    _ = project.default_environment.prepare(force=True)
-    assert project.default_environment.is_prepared
+    # _ = project.default_environment.prepare(force=True)
+    # assert project.default_environment.is_prepared
 
 
 @pytest.mark.slow
@@ -261,8 +275,7 @@ def test_is_prepared_with_pip_package(project_directory_factory):
 
     _ = project.default_environment.prepare()
 
-    # This assertion won't pass if there are pip packages
-    # assert project.default_environment.is_prepared
+    assert project.default_environment.is_prepared
 
     args = [
         "run",

@@ -26,7 +26,7 @@ from conda_lock.conda_lock import (
 )
 from pydantic import BaseModel, create_model
 
-from .conda import CONDA_EXE, call_conda, current_platform
+from .conda import CONDA_EXE, call_conda, current_platform, get_installed_packages
 from .exceptions import CondaProjectError
 from .project_file import (
     ENVIRONMENT_YAML_FILENAMES,
@@ -113,21 +113,23 @@ class Environment(BaseModel):
         """
         if (self.prefix / "conda-meta" / "history").exists():
             if self.is_locked:
-                installed_pkgs = call_conda(
-                    ["list", "-p", str(self.prefix), "--explicit"]
-                ).stdout.splitlines()[3:]
-
                 lock = parse_conda_lock_file(self.lockfile)
-                rendered = render_lockfile_for_platform(
-                    lockfile=lock,
-                    platform=current_platform(),
-                    kind="explicit",
-                    include_dev_dependencies=False,
-                    extras=None,
-                )
-                locked_pkgs = [p.split("#")[0] for p in rendered[3:]]
 
-                return installed_pkgs == locked_pkgs
+                locked_conda = []
+                locked_pip = []
+
+                for p in lock.package:
+                    if p.platform == current_platform():
+                        if p.manager == "conda":
+                            locked_conda.append(p.hash.sha256)
+                        elif p.manager == "pip":
+                            locked_pip.append(p.hash.sha256)
+
+                installed = get_installed_packages(str(self.prefix))
+                conda_up_to_date = installed["conda"] == sorted(locked_conda)
+                pip_up_to_date = installed["pip"] == sorted(locked_pip)
+
+                return conda_up_to_date and pip_up_to_date
 
         return False
 
@@ -233,24 +235,27 @@ class Environment(BaseModel):
                 print(f"The lockfile {self.lockfile} is out-of-date, re-locking...")
             self.lock(verbose=verbose)
 
-        if self.is_prepared:
-            if not force:
-                logger.info(f"environment already exists at {self.prefix}")
-                if verbose:
-                    print(
-                        f"The environment already exists and is up-to-date.\n"
-                        f"run 'conda project prepare --force {self.name} to recreate it from the locked dependencies."
-                    )
-                return self.prefix
-        elif (self.prefix / "conda-meta" / "history").exists() and not self.is_prepared:
-            if not force:
-                if verbose:
-                    print(
-                        f"The environment exists but does not match the locked dependencies.\n"
-                        f"Run 'conda project prepare --force {self.name}' to recreate the environment from the "
-                        f"locked dependencies."
-                    )
-                return self.prefix
+        else:
+
+            if self.is_prepared:
+                if not force:
+                    logger.info(f"environment already exists at {self.prefix}")
+                    if verbose:
+                        print(
+                            f"The environment already exists and is up-to-date.\n"
+                            f"run 'conda project prepare --force {self.name} to recreate "
+                            f"it from the locked dependencies."
+                        )
+                    return self.prefix
+            elif (self.prefix / "conda-meta" / "history").exists():
+                if not force:
+                    if verbose:
+                        print(
+                            f"The environment exists but does not match the locked dependencies.\n"
+                            f"Run 'conda project prepare --force {self.name}' to recreate the environment from the "
+                            f"locked dependencies."
+                        )
+                    return self.prefix
 
         lock = parse_conda_lock_file(self.lockfile)
         if current_platform() not in lock.metadata.platforms:
