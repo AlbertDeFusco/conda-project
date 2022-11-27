@@ -79,6 +79,7 @@ def current_platform():
 
 
 def get_installed_packages(prefix) -> Dict[str, list]:
+    PrefixData._cache_.pop(prefix, None)
     pd = PrefixData(prefix_path=prefix, pip_interop_enabled=True)
 
     # This section borrowed from conda_env::env.py
